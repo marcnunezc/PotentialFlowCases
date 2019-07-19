@@ -1,0 +1,240 @@
+{
+    "output_processes": {
+        "gid_output": [
+            {
+                "Parameters": {
+                    "model_part_name": "model.Parts_Fluid",
+                    "output_name": "./gid_output/embedded_incompressible_background1_naca0012_5.0_REMESH_0.002_1",
+                    "postprocess_parameters": {
+                        "point_data_configuration": [],
+                        "result_file_configuration": {
+                            "additional_list_files": [],
+                            "body_output": true,
+                            "elemental_conditional_flags_results": [
+                                "TO_SPLIT",
+                                "STRUCTURE",
+                                "BOUNDARY"
+                            ],
+                            "file_label": "step",
+                            "flush_after_output": false,
+                            "gauss_point_results": [
+                                "PRESSURE_COEFFICIENT",
+                                "VELOCITY",
+                                "WAKE",
+                                "KUTTA"
+                            ],
+                            "gidpost_flags": {
+                                "GiDPostMode": "GiD_PostBinary",
+                                "MultiFileFlag": "SingleFile",
+                                "WriteConditionsFlag": "WriteConditions",
+                                "WriteDeformedMeshFlag": "WriteDeformed"
+                            },
+                            "nodal_flags_results": [],
+                            "nodal_nonhistorical_results": [
+                                "TRAILING_EDGE",
+                                "WAKE_DISTANCE"
+                            ],
+                            "nodal_results": [
+                                "VELOCITY_POTENTIAL",
+                                "AUXILIARY_VELOCITY_POTENTIAL",
+                                "GEOMETRY_DISTANCE"
+                            ],
+                            "node_output": false,
+                            "output_control_type": "step",
+                            "output_frequency": 1,
+                            "plane_output": [],
+                            "skin_output": false
+                        }
+                    }
+                },
+                "kratos_module": "KratosMultiphysics",
+                "python_module": "gid_output_process"
+            }
+        ]
+    },
+    "problem_data": {
+        "echo_level": 0,
+        "end_time": 1,
+        "parallel_type": "OpenMP",
+        "start_time": 0.0
+    },
+    "processes": {
+        "boundary_conditions_process_list": [
+            {
+                "Parameters": {
+                    "distance_modification_parameters": {
+                        "avoid_almost_empty_elements": true,
+                        "check_at_each_time_step": true,
+                        "continuous_distance": true,
+                        "deactivate_full_negative_elements": true,
+                        "distance_threshold": 0.001,
+                        "full_negative_elements_fixed_variables_list": [
+                            "VELOCITY_POTENTIAL",
+                            "AUXILIARY_VELOCITY_POTENTIAL"
+                        ],
+                        "model_part_name": "",
+                        "recover_original_distance_at_each_step": false
+                    },
+                    "maximum_iterations": 2,
+                    "metric_parameters": {
+                        "anisotropy_parameters": {
+                            "boundary_layer_max_distance": 7.0,
+                            "hmin_over_hmax_anisotropic_ratio": 0.3,
+                            "interpolation": "linear",
+                            "reference_variable_name": "DISTANCE"
+                        },
+                        "anisotropy_remeshing": false,
+                        "enforce_current": false,
+                        "maximal_size": 1.0,
+                        "minimal_size": 0.0005,
+                        "sizing_parameters": {
+                            "boundary_layer_max_distance": 10.0,
+                            "interpolation": "linear",
+                            "reference_variable_name": "DISTANCE"
+                        }
+                    },
+                    "model_part_name": "model.Parts_Fluid",
+                    "moving_parameters": {
+                        "origin": [
+                            -0.5,
+                            0.0,
+                            0.0
+                        ],
+                        "rotation_angle": -0.08726646259971647,
+                        "rotation_point": [
+                            -0.25,
+                            0.0,
+                            0.0
+                        ],
+                        "sizing_multiplier": 1.0
+                    },
+                    "ray_casting_tolerance": 1e-09,
+                    "remeshing_flag": true,
+                    "skin_model_part_name": "naca0012",
+                    "update_coefficient": 0.5
+                },
+                "kratos_module": "KratosMultiphysics.CompressiblePotentialFlowApplication",
+                "python_module": "level_set_remeshing_process"
+            },
+            {
+                "Parameters": {
+                    "angle_of_attack": 0.0,
+                    "free_stream_density": 1.0,
+                    "heat_capacity_ratio": 1.4,
+                    "initialize_flow_field": false,
+                    "inlet_potential": 1.0,
+                    "mach_infinity": 0.02941176471,
+                    "model_part_name": "model.PotentialWallCondition2D_FarField",
+                    "speed_of_sound": 340
+                },
+                "kratos_module": "KratosMultiphysics.CompressiblePotentialFlowApplication",
+                "python_module": "apply_far_field_process"
+            },
+            {
+                "Parameters": {
+                    "epsilon": 1e-09,
+                    "model_part_name": "model.Parts_Fluid"
+                },
+                "kratos_module": "KratosMultiphysics.CompressiblePotentialFlowApplication",
+                "python_module": "define_embedded_wake_process_2d"
+            },
+            {
+                "Parameters": {
+                    "model_part_name": "model.Parts_Fluid"
+                },
+                "kratos_module": "KratosMultiphysics.CompressiblePotentialFlowApplication",
+                "python_module": "compute_embedded_lift_process"
+            }
+        ],
+        "initial_conditions_process_list": [],
+        "list_other_processes": [
+            {
+                "Parameters": {
+                    "element_data_value_settings": {},
+                    "file_settings": {
+                        "file_access_mode": "truncate"
+                    },
+                    "model_part_name": "model",
+                    "model_part_output_settings": {},
+                    "nodal_data_value_settings": {},
+                    "nodal_solution_step_data_settings": {
+                        "list_of_variables": [
+                            "VELOCITY_POTENTIAL",
+                            "AUXILIARY_VELOCITY_POTENTIAL"
+                        ]
+                    },
+                    "output_time_settings": {
+                        "step_frequency": 1
+                    }
+                },
+                "help": "",
+                "kratos_module": "KratosMultiphysics.HDF5Application",
+                "process_name": "",
+                "python_module": "single_mesh_primal_output_process"
+            }
+        ]
+    },
+    "solver_settings": {
+        "absolute_tolerance": 1e-12,
+        "auxiliary_variables_list": [
+            "DISTANCE",
+            "DISTANCE_GRADIENT",
+            "GEOMETRY_DISTANCE",
+            "NODAL_H",
+            "FLAG_VARIABLE",
+            "VELOCITY"
+        ],
+        "calculate_solution_norm": false,
+        "compute_reactions": false,
+        "domain_size": 2,
+        "echo_level": 0,
+        "element_replace_settings": {
+            "condition_name": "PotentialWallCondition2D2N",
+            "element_name": "EmbeddedIncompressiblePotentialFlowElement2D3N"
+        },
+        "formulation": {
+            "element_type": "embedded_incompressible"
+        },
+        "linear_solver_settings": {
+            "block_size": 1,
+            "coarse_enough": 5000,
+            "coarsening_type": "ruge_stuben",
+            "gmres_krylov_space_dimension": 100,
+            "krylov_type": "lgmres",
+            "max_iteration": 400,
+            "max_levels": -1,
+            "post_sweeps": 1,
+            "pre_sweeps": 1,
+            "preconditioner_type": "amg",
+            "provide_coordinates": false,
+            "scaling": false,
+            "smoother_type": "ilu0",
+            "solver_type": "amgcl",
+            "tolerance": 1e-09,
+            "use_block_matrices_if_possible": true,
+            "use_gpgpu": false,
+            "verbosity": 0
+        },
+        "material_import_settings": {
+            "materials_filename": "unknown_materials.json"
+        },
+        "maximum_iterations": 10,
+        "model_import_settings": {
+            "input_filename": "./Meshes/background1",
+            "input_type": "mdpa"
+        },
+        "model_part_name": "model",
+        "move_mesh_flag": false,
+        "no_skin_parts": [
+            "Wake2D_Wake_Auto1"
+        ],
+        "reference_chord": 1.0,
+        "reform_dofs_at_each_step": false,
+        "relative_tolerance": 1e-12,
+        "skin_parts": [
+            "PotentialWallCondition2D_FarField"
+        ],
+        "solver_type": "potential_flow",
+        "volume_model_part_name": "Parts_Fluid"
+    }
+}
