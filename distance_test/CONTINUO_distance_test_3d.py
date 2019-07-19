@@ -62,7 +62,7 @@ for stl_mesh in wake_stl_mesh:
 # moving_params["rotation_angle"].SetDouble(angle)
 # KratosMultiphysics.CompressiblePotentialFlowApplication.MoveModelPartProcess(wake_model_part, moving_params).Execute()
 
-use_discontinuous = True #Set to false to use continuous distance process
+use_discontinuous = False #Set to false to use continuous distance process
 
 if use_discontinuous:
     for element in main_model_part.Elements:
@@ -82,6 +82,7 @@ if use_discontinuous:
                 nneg += 1
         counter = 0
         if (npos>0 and nneg >0):
+            print(distances)
             element.Set(KratosMultiphysics.BOUNDARY,True)
             for node in element.GetNodes():
                 node.SetSolutionStepValue(KratosMultiphysics.DISTANCE,distances[counter])
@@ -98,7 +99,7 @@ else:
 
 from gid_output_process import GiDOutputProcess
 gid_output = GiDOutputProcess(main_model_part,
-                            "distance_test",
+                            "distance_test_CONTINUO",
                             KratosMultiphysics.Parameters("""
                                 {
                                     "result_file_configuration" : {
