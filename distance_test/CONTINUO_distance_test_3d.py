@@ -92,9 +92,32 @@ if use_discontinuous:
 else:
     # Continuous distance process (does not work for volumeless bodies)
     KratosMultiphysics.CalculateDistanceToSkinProcess3D(main_model_part,wake_model_part).Execute()
+    for node in main_model_part.Nodes:
+        node.SetValue(KratosMultiphysics.LAMBDA, 100)
+    # OPTION 1
+    # Save elemental distances in all the elements
+    for element in main_model_part.Elements:
+        distances = element.GetValue(KratosMultiphysics.ELEMENTAL_DISTANCES)
+        counter = 0
+        for node in element.GetNodes():
+            node.SetValue(KratosMultiphysics.LAMBDA, distances[counter])
+            counter += 1
+
+    # OPTION 2
+    # Save elemental distances only in cut elements
+    number_of_cut_elements = 0
+    for element in main_model_part.Elements:
+        if(element.Is(KratosMultiphysics.TO_SPLIT)):
+            number_of_cut_elements += 1
+            distances = element.GetValue(KratosMultiphysics.ELEMENTAL_DISTANCES)
+            counter = 0
+            for node in element.GetNodes():
+                node.SetValue(KratosMultiphysics.LAMBDA, distances[counter])
+                counter += 1
+            print(element.Id)
 
 
-
+print('number_of_cut_elements = ', number_of_cut_elements)
 
 
 from gid_output_process import GiDOutputProcess
@@ -111,6 +134,7 @@ gid_output = GiDOutputProcess(main_model_part,
                                         },
                                         "nodal_results" : ["DISTANCE"],
                                         "elemental_conditional_flags_results" : ["BOUNDARY"],
+                                        "nodal_nonhistorical_results" : ["LAMBDA"],
                                         "plane_output"        : [
                                             {"point": [0.0, 0.0, 0.0],
                                             "normal": [0.0, 1.0, 0.0]}]
