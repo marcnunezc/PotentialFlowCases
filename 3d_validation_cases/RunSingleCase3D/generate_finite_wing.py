@@ -4,6 +4,21 @@
 ### This file is generated automatically by SALOME v8.4.0 with dump python functionality
 ###
 
+# Parameters:
+AOA = 5.0
+Wing_span = 4.0
+Domain_Length = 10
+Domain_Height = Domain_Length
+Domain_Width = 10
+
+Airfoil_Mesh_Size = 0.05
+Biggest_Airfoil_Mesh_Size = 0.05
+LE_Mesh_Size = Airfoil_Mesh_Size
+TE_Mesh_Size = Airfoil_Mesh_Size
+Far_Field_Mesh_Size = Domain_Length/10.0
+Growth_Rate_Wing = 0.7
+Growth_Rate_Domain = 0.7
+
 import sys
 import salome
 
@@ -12,7 +27,6 @@ theStudy = salome.myStudy
 
 import salome_notebook
 notebook = salome_notebook.NoteBook(theStudy)
-sys.path.insert( 0, r'/home/inigo/simulations/wing/02_finite_wing/salome_output')
 
 import os
 script_path = os.path.dirname(os.path.realpath(__file__))
@@ -45,14 +59,14 @@ Curve_LowerSurface_LE = geompy.MakeCurveParametric("t - 0.5", "0.0", "-0.6*(0.29
 Face_Airfoil = geompy.MakeFaceWires([Curve_UpperSurface_LE, Curve_UpperSurface_TE, Curve_LowerSurface_TE, Curve_LowerSurface_LE], 1)
 
 # Rotate around center to AOA
-geompy.Rotate(Face_Airfoil, OY, 5*math.pi/180.0)
+geompy.Rotate(Face_Airfoil, OY, AOA*math.pi/180.0)
 
 # Extrusion of the wing
-Extrusion_Wing = geompy.MakePrismVecH2Ways(Face_Airfoil, OY, 2)
+Extrusion_Wing = geompy.MakePrismVecH2Ways(Face_Airfoil, OY, Wing_span/2.0)
 
 # Domain generation
-Face_Domain = geompy.MakeFaceHW(10, 10, 3)
-Extrusion_Domain = geompy.MakePrismVecH2Ways(Face_Domain, OY, 5)
+Face_Domain = geompy.MakeFaceHW(Domain_Length, Domain_Height, 3)
+Extrusion_Domain = geompy.MakePrismVecH2Ways(Face_Domain, OY, Domain_Width/2.0)
 
 # Cut wing from the domain
 Cut_Domain = geompy.MakeCutList(Extrusion_Domain, [Extrusion_Wing], True)
@@ -60,19 +74,20 @@ Cut_Domain = geompy.MakeCutList(Extrusion_Domain, [Extrusion_Wing], True)
 # Explode faces and edges
 [Face_Inlet,Face_Left_Wall,Face_Left_Wing,Face_Lower_LE,Face_Upper_LE,Face_Down_Wall,Face_Top_Wall,Face_Right_Wing,Face_Lower_TE,Face_Upper_TE,Face_Right_Wall,Face_Outlet] = geompy.ExtractShapes(Cut_Domain, geompy.ShapeType["FACE"], True)
 
-# Extruding
+# Extruding far field
 [Edge_1,Edge_2,Edge_3,Edge_4] = geompy.ExtractShapes(Face_Inlet, geompy.ShapeType["EDGE"], True)
-[Edge_Left_LowerLE,Edge_6,Edge_7,Edge_Left_UpperLE] = geompy.ExtractShapes(Face_Left_Wall, geompy.ShapeType["EDGE"], True)
-[Edge_Left_LowerLE,Edge_Left_UpperLE,Edge_Left_Lower_TE,Edge_Left_Upper_TE] = geompy.ExtractShapes(Face_Left_Wing, geompy.ShapeType["EDGE"], True)
-[Edge_LE,Edge_Right_LowerLE,Edge_Right_UpperLE,Edge_Middle_Lower] = geompy.ExtractShapes(Face_Lower_LE, geompy.ShapeType["EDGE"], True)
-[Edge_Right_LowerLE,Edge_Right_UpperLE,Edge_Right_LowerTE,Edge_Middle_Upper] = geompy.ExtractShapes(Face_Upper_LE, geompy.ShapeType["EDGE"], True)
-[Edge_Right_LowerLE,Edge_Right_UpperLE,Edge_Right_LowerTE,Edge_Right_UpperTE] = geompy.ExtractShapes(Face_Right_Wing, geompy.ShapeType["EDGE"], True)
-[Edge_5,Edge_8,Edge_9,Edge_TE] = geompy.ExtractShapes(Face_Lower_TE, geompy.ShapeType["EDGE"], True)
-[Edge_5,Edge_8,Edge_9,Edge_10] = geompy.ExtractShapes(Face_Right_Wall, geompy.ShapeType["EDGE"], True)
+[Obj1,Edge_6,Edge_7,Obj2] = geompy.ExtractShapes(Face_Left_Wall, geompy.ShapeType["EDGE"], True)
+[Obj1,Edge_8,Edge_9,Obj2] = geompy.ExtractShapes(Face_Right_Wall, geompy.ShapeType["EDGE"], True)
 [Edge_5,Edge_10,Edge_11,Edge_12] = geompy.ExtractShapes(Face_Outlet, geompy.ShapeType["EDGE"], True)
 
-# Making groups for submeshes
+# Extruding wing
+[Edge_Left_LowerLE,Edge_Left_UpperLE,Edge_Left_Lower_TE,Edge_Left_Upper_TE] = geompy.ExtractShapes(Face_Left_Wing, geompy.ShapeType["EDGE"], True)
+[Edge_LE,Obj1,Obj2,Edge_Middle_Lower] = geompy.ExtractShapes(Face_Lower_LE, geompy.ShapeType["EDGE"], True)
+[Obj1,Obj2,Obj3,Edge_Middle_Upper] = geompy.ExtractShapes(Face_Upper_LE, geompy.ShapeType["EDGE"], True)
+[Edge_Right_LowerLE,Edge_Right_UpperLE,Edge_Right_LowerTE,Edge_Right_UpperTE] = geompy.ExtractShapes(Face_Right_Wing, geompy.ShapeType["EDGE"], True)
+[Obj1,Obj2,Obj3,Edge_TE] = geompy.ExtractShapes(Face_Lower_TE, geompy.ShapeType["EDGE"], True)
 
+# Making groups for submeshes
 # Far field surface
 Auto_group_for_Sub_mesh_Far_Field_Surface = geompy.CreateGroup(Cut_Domain, geompy.ShapeType["FACE"])
 geompy.UnionList(Auto_group_for_Sub_mesh_Far_Field_Surface, [Face_Inlet, Face_Left_Wall, Face_Down_Wall, Face_Top_Wall, Face_Right_Wall, Face_Outlet])
@@ -172,13 +187,13 @@ smesh = smeshBuilder.New(theStudy)
 Mesh_Domain = smesh.Mesh(Cut_Domain)
 NETGEN_3D = Mesh_Domain.Tetrahedron()
 NETGEN_3D_Parameters_1 = NETGEN_3D.Parameters()
-NETGEN_3D_Parameters_1.SetMaxSize( 1 )
+NETGEN_3D_Parameters_1.SetMaxSize( Far_Field_Mesh_Size )
 NETGEN_3D_Parameters_1.SetOptimize( 1 )
 NETGEN_3D_Parameters_1.SetFineness( 5 )
-NETGEN_3D_Parameters_1.SetGrowthRate( 0.7 )
+NETGEN_3D_Parameters_1.SetGrowthRate( Growth_Rate_Domain )
 NETGEN_3D_Parameters_1.SetNbSegPerEdge( 3 )
 NETGEN_3D_Parameters_1.SetNbSegPerRadius( 5 )
-NETGEN_3D_Parameters_1.SetMinSize( 0.01 )
+NETGEN_3D_Parameters_1.SetMinSize( Airfoil_Mesh_Size )
 NETGEN_3D_Parameters_1.SetUseSurfaceCurvature( 0 )
 NETGEN_3D_Parameters_1.SetSecondOrder( 106 )
 NETGEN_3D_Parameters_1.SetFuseEdges( 80 )
@@ -188,10 +203,10 @@ NETGEN_3D_Parameters_1.SetQuadAllowed( 127 )
 NETGEN_2D = Mesh_Domain.Triangle(algo=smeshBuilder.NETGEN_2D,geom=Auto_group_for_Sub_mesh_Far_Field_Surface)
 Sub_mesh_Far_Field_Surface = NETGEN_2D.GetSubMesh()
 NETGEN_2D_Parameters_FarField = NETGEN_2D.Parameters()
-NETGEN_2D_Parameters_FarField.SetMaxSize( 1 )
+NETGEN_2D_Parameters_FarField.SetMaxSize( Far_Field_Mesh_Size )
 NETGEN_2D_Parameters_FarField.SetOptimize( 1 )
 NETGEN_2D_Parameters_FarField.SetFineness( 0 )
-NETGEN_2D_Parameters_FarField.SetMinSize( 0.9 )
+NETGEN_2D_Parameters_FarField.SetMinSize( Far_Field_Mesh_Size )
 NETGEN_2D_Parameters_FarField.SetUseSurfaceCurvature( 1 )
 NETGEN_2D_Parameters_FarField.SetQuadAllowed( 0 )
 NETGEN_2D_Parameters_FarField.SetSecondOrder( 106 )
@@ -201,13 +216,13 @@ NETGEN_2D_Parameters_FarField.SetFuseEdges( 80 )
 NETGEN_2D_1 = Mesh_Domain.Triangle(algo=smeshBuilder.NETGEN_2D,geom=Auto_group_for_Sub_mesh_Wing_Surface)
 Sub_mesh_Wing_Surface = NETGEN_2D_1.GetSubMesh()
 NETGEN_2D_Parameters_Wing = NETGEN_2D_1.Parameters()
-NETGEN_2D_Parameters_Wing.SetMaxSize( 0.05 )
+NETGEN_2D_Parameters_Wing.SetMaxSize( Biggest_Airfoil_Mesh_Size )
 NETGEN_2D_Parameters_Wing.SetOptimize( 1 )
 NETGEN_2D_Parameters_Wing.SetFineness( 5 )
-NETGEN_2D_Parameters_Wing.SetGrowthRate( 0.1 )
+NETGEN_2D_Parameters_Wing.SetGrowthRate( Growth_Rate_Wing )
 NETGEN_2D_Parameters_Wing.SetNbSegPerEdge( 6.92154e-310 )
 NETGEN_2D_Parameters_Wing.SetNbSegPerRadius( 5.32336e-317 )
-NETGEN_2D_Parameters_Wing.SetMinSize( 0.01 )
+NETGEN_2D_Parameters_Wing.SetMinSize( Airfoil_Mesh_Size )
 NETGEN_2D_Parameters_Wing.SetUseSurfaceCurvature( 1 )
 NETGEN_2D_Parameters_Wing.SetQuadAllowed( 0 )
 NETGEN_2D_Parameters_Wing.SetSecondOrder( 106 )
@@ -215,26 +230,31 @@ NETGEN_2D_Parameters_Wing.SetFuseEdges( 80 )
 
 # Far field edges
 Regular_1D = Mesh_Domain.Segment(geom=Auto_group_for_Sub_mesh_Far_Field_Edges)
-Local_Length_Far_Field = Regular_1D.LocalLength(1,None,1e-07)
+Local_Length_Far_Field = Regular_1D.LocalLength(Far_Field_Mesh_Size,None,1e-07)
 
 # LE Airfoils
 Regular_1D_1 = Mesh_Domain.Segment(geom=Auto_group_for_Sub_mesh_LE_Airfoils)
-Start_and_End_Length_LE = Regular_1D_1.StartEndLength(0.01,0.05,[])
+Start_and_End_Length_LE = Regular_1D_1.StartEndLength(Airfoil_Mesh_Size,Biggest_Airfoil_Mesh_Size,[])
 Start_and_End_Length_LE.SetObjectEntry( 'Cut_Domain' )
 
 # TE Airfoils
 Regular_1D_2 = Mesh_Domain.Segment(geom=Auto_group_for_Sub_mesh_TE_Airfoils)
-Start_and_End_Length_TE = Regular_1D_2.StartEndLength(0.05,0.01,[])
+Start_and_End_Length_TE = Regular_1D_2.StartEndLength(Biggest_Airfoil_Mesh_Size,Airfoil_Mesh_Size,[])
 Start_and_End_Length_TE.SetObjectEntry( 'Cut_Domain' )
 
-# LETE
-Regular_1D_3 = Mesh_Domain.Segment(geom=Auto_group_for_Sub_mesh_LETE)
-Sub_mesh_LETE = Regular_1D_3.GetSubMesh()
-Local_Length_LETE = Regular_1D_3.LocalLength(0.01,None,1e-07)
+# TE
+Regular_1D_3 = Mesh_Domain.Segment(geom=Edge_TE)
+Sub_mesh_TE = Regular_1D_3.GetSubMesh()
+Local_Length_TE = Regular_1D_3.LocalLength(TE_Mesh_Size,None,1e-07)
+
+# LE
+Regular_1D_4 = Mesh_Domain.Segment(geom=Edge_LE)
+Sub_mesh_LE = Regular_1D_4.GetSubMesh()
+Local_Length_LE = Regular_1D_4.LocalLength(LE_Mesh_Size,None,1e-07)
 
 # Middle
 Regular_1D_4 = Mesh_Domain.Segment(geom=Auto_group_for_Sub_mesh_Middle)
-Local_Length_Middle = Regular_1D_4.LocalLength(0.05,None,1e-07)
+Local_Length_Middle = Regular_1D_4.LocalLength(Biggest_Airfoil_Mesh_Size,None,1e-07)
 
 # Compute mesh
 isDone = Mesh_Domain.Compute()
@@ -262,7 +282,7 @@ try:
 except:
   print 'ExportPartToDAT() failed. Invalid file name?'
 try:
-  Mesh_Domain.ExportDAT( script_path + '/salome_output/Sub-mesh_TE.dat', Sub_mesh_LETE )
+  Mesh_Domain.ExportDAT( script_path + '/salome_output/Sub-mesh_TE.dat', Sub_mesh_TE )
   pass
 except:
   print 'ExportPartToDAT() failed. Invalid file name?'
@@ -280,7 +300,7 @@ smesh.SetName(NETGEN_2D_Parameters_FarField, 'NETGEN 2D Parameters_FarField')
 smesh.SetName(NETGEN_2D_Parameters_Wing, 'NETGEN 2D Parameters_Wing')
 smesh.SetName(NETGEN_3D_Parameters_1, 'NETGEN 3D Parameters_1')
 smesh.SetName(Start_and_End_Length_TE, 'Start and End Length_TE')
-smesh.SetName(Local_Length_LETE, 'Local Length_LETE')
+smesh.SetName(Local_Length_TE, 'Local Length_TE')
 smesh.SetName(Local_Length_Far_Field, 'Local Length_Far_Field')
 smesh.SetName(Start_and_End_Length_LE, 'Start and End Length_LE')
 smesh.SetName(Local_Length_Middle, 'Local Length_Middle')
@@ -289,7 +309,7 @@ smesh.SetName(Sub_mesh_Far_Field_Edges, 'Sub-mesh_Far_Field_Edges')
 smesh.SetName(Sub_mesh_Wing_Surface, 'Sub-mesh_Wing_Surface')
 smesh.SetName(Sub_mesh_Far_Field_Surface, 'Sub-mesh_Far_Field_Surface')
 smesh.SetName(Sub_mesh_Middle, 'Sub-mesh_Middle')
-smesh.SetName(Sub_mesh_LETE, 'Sub-mesh_LETE')
+smesh.SetName(Sub_mesh_TE, 'Sub-mesh_TE')
 smesh.SetName(Sub_mesh_TE_Airfoils, 'Sub-mesh_TE_Airfoils')
 smesh.SetName(Sub_mesh_LE_Airfoils, 'Sub-mesh_LE_Airfoils')
 
