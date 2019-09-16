@@ -10,7 +10,7 @@ AOA = 5.0
 Wing_span = 4.0
 
 # Mesh
-Airfoil_Mesh_Size = 0.001
+Airfoil_Mesh_Size = 0.01
 Biggest_Airfoil_Mesh_Size = 0.05
 Growth_Rate = 0.1
 
@@ -189,6 +189,9 @@ smesh.SetName(Sub_mesh_AirfoilTE, 'Sub-mesh_AirfoilTE')
 smesh.SetName(Sub_mesh_AirfoilLE, 'Sub-mesh_AirfoilLE')
 smesh.SetName(Sub_mesh_Middle, 'Sub-mesh_Middle')
 
+# Saving file to open from salome's gui
+file_name = "/salome_files/generate_finite_wing_surface.hdf"
+salome.myStudyManager.SaveAs(script_path + file_name, salome.myStudy, 0)
 
 if salome.sg.hasDesktop():
   salome.sg.updateObjBrowser(True)
