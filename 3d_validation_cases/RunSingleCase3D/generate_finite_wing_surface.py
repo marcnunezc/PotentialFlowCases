@@ -189,6 +189,13 @@ smesh.SetName(Sub_mesh_AirfoilTE, 'Sub-mesh_AirfoilTE')
 smesh.SetName(Sub_mesh_AirfoilLE, 'Sub-mesh_AirfoilLE')
 smesh.SetName(Sub_mesh_Middle, 'Sub-mesh_Middle')
 
+# Export meshes into data files
+try:
+  Mesh_Wing.ExportDAT( script_path + '/salome_output/Mesh_Wing.dat' )
+  pass
+except:
+  print 'ExportDAT() failed. Invalid file name?'
+
 # Saving file to open from salome's gui
 file_name = "/salome_files/generate_finite_wing_surface.hdf"
 salome.myStudyManager.SaveAs(script_path + file_name, salome.myStudy, 0)
