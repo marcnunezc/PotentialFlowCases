@@ -7,11 +7,11 @@
 # Parameters:
 AOA = 5.0
 Wing_span = 4.0
-Domain_Length = 10
+Domain_Length = 100
 Domain_Height = Domain_Length
-Domain_Width = 10
+Domain_Width = 100
 
-Airfoil_Mesh_Size = 0.05
+Airfoil_Mesh_Size = 0.01
 Biggest_Airfoil_Mesh_Size = 0.05
 LE_Mesh_Size = Airfoil_Mesh_Size
 TE_Mesh_Size = Airfoil_Mesh_Size
@@ -86,6 +86,10 @@ Cut_Domain = geompy.MakeCutList(Extrusion_Domain, [Extrusion_Wing], True)
 [Obj1,Obj2,Obj3,Edge_Middle_Upper] = geompy.ExtractShapes(Face_Upper_LE, geompy.ShapeType["EDGE"], True)
 [Edge_Right_LowerLE,Edge_Right_UpperLE,Edge_Right_LowerTE,Edge_Right_UpperTE] = geompy.ExtractShapes(Face_Right_Wing, geompy.ShapeType["EDGE"], True)
 [Obj1,Obj2,Obj3,Edge_TE] = geompy.ExtractShapes(Face_Lower_TE, geompy.ShapeType["EDGE"], True)
+
+# Generate wake
+Vector_Wake_Direction = geompy.MakeVectorDXDYDZ(1, 0, 0)
+Extrusion_Wake = geompy.MakePrismVecH(Edge_TE, Vector_Wake_Direction, Domain_Length*0.5)
 
 # Making groups for submeshes
 # Far field surface
@@ -166,6 +170,7 @@ geompy.addToStudyInFather( Face_Lower_TE, Edge_TE, 'Edge_TE' )
 geompy.addToStudyInFather( Face_Outlet, Edge_10, 'Edge_10' )
 geompy.addToStudyInFather( Face_Outlet, Edge_11, 'Edge_11' )
 geompy.addToStudyInFather( Face_Outlet, Edge_12, 'Edge_12' )
+geompy.addToStudy( Extrusion_Wake, 'Extrusion_Wake' )
 geompy.addToStudyInFather( Cut_Domain, Auto_group_for_Sub_mesh_Far_Field_Surface, 'Auto_group_for_Sub-mesh_Far_Field_Surface' )
 geompy.addToStudyInFather( Cut_Domain, Auto_group_for_Sub_mesh_Wing_Surface, 'Auto_group_for_Sub-mesh_Wing_Surface' )
 geompy.addToStudyInFather( Cut_Domain, Auto_group_for_Sub_mesh_Far_Field_Edges, 'Auto_group_for_Sub-mesh_Far_Field_Edges' )
@@ -291,6 +296,17 @@ Sub_mesh_LE_Airfoils = Regular_1D_1.GetSubMesh()
 Sub_mesh_TE_Airfoils = Regular_1D_2.GetSubMesh()
 Sub_mesh_Middle = Regular_1D_4.GetSubMesh()
 
+# Mesh wake and export STL
+Mesh_Wake_Surface = smesh.Mesh(Extrusion_Wake)
+status = Mesh_Wake_Surface.AddHypothesis(NETGEN_2D_Parameters_FarField)
+NETGEN_1D_2D_2 = Mesh_Wake_Surface.Triangle(algo=smeshBuilder.NETGEN_1D2D)
+isDone = Mesh_Wake_Surface.Compute()
+try:
+  Mesh_Wake_Surface.ExportSTL( script_path + '/case/wake_stl.stl', 1 )
+  pass
+except:
+  print 'ExportSTL() failed. Invalid file name?'
+
 
 ## Set names of Mesh objects
 smesh.SetName(NETGEN_3D.GetAlgorithm(), 'NETGEN 3D')
@@ -312,6 +328,11 @@ smesh.SetName(Sub_mesh_Middle, 'Sub-mesh_Middle')
 smesh.SetName(Sub_mesh_TE, 'Sub-mesh_TE')
 smesh.SetName(Sub_mesh_TE_Airfoils, 'Sub-mesh_TE_Airfoils')
 smesh.SetName(Sub_mesh_LE_Airfoils, 'Sub-mesh_LE_Airfoils')
+smesh.SetName(Mesh_Wake_Surface, 'Mesh_Wake_Surface')
+
+# Saving file to open from salome's gui
+file_name = "/salome_files/generate_finite_wing.hdf"
+salome.myStudyManager.SaveAs(script_path + file_name, salome.myStudy, 0)
 
 
 if salome.sg.hasDesktop():
