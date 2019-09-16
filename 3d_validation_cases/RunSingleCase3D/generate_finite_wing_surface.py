@@ -5,8 +5,14 @@
 ###
 
 # Indicate parameters:
+# Geometry
 AOA = 5.0
 Wing_span = 4.0
+
+# Mesh
+Airfoil_Mesh_Size = 0.001
+Biggest_Airfoil_Mesh_Size = 0.05
+Growth_Rate = 0.1
 
 import sys
 import salome
@@ -127,10 +133,11 @@ smesh = smeshBuilder.New(theStudy)
 Mesh_Wing = smesh.Mesh(Fuse_Wing)
 NETGEN_2D = Mesh_Wing.Triangle(algo=smeshBuilder.NETGEN_2D)
 NETGEN_2D_Parameters_1 = NETGEN_2D.Parameters()
-NETGEN_2D_Parameters_1.SetMaxSize( 0.05 )
+NETGEN_2D_Parameters_1.SetMaxSize( Biggest_Airfoil_Mesh_Size )
 NETGEN_2D_Parameters_1.SetOptimize( 1 )
-NETGEN_2D_Parameters_1.SetFineness( 2 )
-NETGEN_2D_Parameters_1.SetMinSize( 0.01 )
+NETGEN_2D_Parameters_1.SetFineness( 5 )
+NETGEN_2D_Parameters_1.SetGrowthRate( Growth_Rate )
+NETGEN_2D_Parameters_1.SetMinSize( Airfoil_Mesh_Size )
 NETGEN_2D_Parameters_1.SetUseSurfaceCurvature( 1 )
 NETGEN_2D_Parameters_1.SetQuadAllowed( 0 )
 NETGEN_2D_Parameters_1.SetSecondOrder( 0 )
@@ -138,21 +145,23 @@ NETGEN_2D_Parameters_1.SetFuseEdges( 1 )
 
 # Lateral leading edge airfoils
 Regular_1D = Mesh_Wing.Segment(geom=Auto_group_for_Sub_mesh_AirfoilLE)
-Start_and_End_Length_LE = Regular_1D.StartEndLength(0.01,0.05,[])
+Start_and_End_Length_LE = Regular_1D.StartEndLength(Airfoil_Mesh_Size,Biggest_Airfoil_Mesh_Size,[])
 Start_and_End_Length_LE.SetObjectEntry( 'Fuse_Wing' )
 
 # Lateral trailing edge airfoils
 Regular_1D_1 = Mesh_Wing.Segment(geom=Auto_group_for_Sub_mesh_AirfoilTE)
-Start_and_End_Length_TE = Regular_1D_1.StartEndLength(0.05,0.01,[])
+Start_and_End_Length_TE = Regular_1D_1.StartEndLength(Biggest_Airfoil_Mesh_Size,Airfoil_Mesh_Size,[])
 Start_and_End_Length_TE.SetObjectEntry( 'Fuse_Wing' )
 
 # Leading and trailing edge
 Regular_1D_2 = Mesh_Wing.Segment(geom=Auto_group_for_Sub_mesh_LETE)
-Local_Length_LETE = Regular_1D_2.LocalLength(0.01,None,1e-07)
+Local_Length_LETE = Regular_1D_2.LocalLength(Airfoil_Mesh_Size,None,1e-07)
 
 # Middle edges
 Regular_1D_3 = Mesh_Wing.Segment(geom=Auto_group_for_Sub_mesh_Middle)
-Local_Length_Middle = Regular_1D_3.LocalLength(0.05,None,1e-07)
+Local_Length_Middle = Regular_1D_3.LocalLength(Biggest_Airfoil_Mesh_Size,None,1e-07)
+
+# Compute mesh
 isDone = Mesh_Wing.Compute()
 Sub_mesh_AirfoilLE = Regular_1D.GetSubMesh()
 Sub_mesh_AirfoilTE = Regular_1D_1.GetSubMesh()
