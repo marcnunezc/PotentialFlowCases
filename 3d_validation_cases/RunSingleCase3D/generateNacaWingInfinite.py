@@ -15,7 +15,7 @@ script_path = os.path.dirname(os.path.realpath(__file__))
 AOA = 5
 Domain_Length = 100
 Domain_Height = Domain_Length
-Domain_Width = 0.1
+Domain_Width = 5
 
 Airfoil_Mesh_Size = 0.001
 Biggest_Airfoil_Mesh_Size = 0.05
@@ -195,7 +195,7 @@ Start_and_End_Length_TE.SetObjectEntry( 'Extrusion_Domain' )
 Regular_1D_2 = Mesh_Domain.Segment(geom=Auto_group_for_Sub_mesh_FarFieldEdges)
 Local_Length_FarField = Regular_1D_2.LocalLength(Far_Field_Mesh_Size,None,1e-07)
 Regular_1D_3 = Mesh_Domain.Segment(geom=Auto_group_for_Sub_mesh_FarFieldWidth)
-Local_Length_Width = Regular_1D_3.LocalLength(Domain_Width,None,1e-07)
+Local_Length_Width = Regular_1D_3.LocalLength(Far_Field_Mesh_Size,None,1e-07)
 
 # Set Wing
 #NETGEN_1D_2D = Mesh_Domain.Triangle(algo=smeshBuilder.NETGEN_1D2D,geom=Auto_group_for_Sub_mesh_Wing)
