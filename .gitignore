@@ -1,0 +1,10 @@
+# Directories ignored
+dats/*
+json_output/*
+
+# Formats ignored
+*.bin
+*.msh
+*.res
+*.zip
+*.h5

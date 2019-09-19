@@ -16,6 +16,7 @@ class PotentialAnalysisCustom(PotentialFlowAnalysis):
 		self.input_file = parameters["solver_settings"]["model_import_settings"]["input_filename"].GetString()
 		parameters["solver_settings"]["model_import_settings"]["input_filename"].SetString('./Meshes/'+self.input_file)
 		boundary_processes=parameters["processes"]["boundary_conditions_process_list"]
+		other_processes=parameters["processes"]["list_other_processes"]
 		python_module=boundary_processes[0]["python_module"].GetString()
 
 		if python_module == "level_set_remeshing_process":
@@ -26,10 +27,16 @@ class PotentialAnalysisCustom(PotentialFlowAnalysis):
 			self.problem_name=self.case+"_"+self.input_file+"_"+skin_model_part_name+"_"+str(rotation_angle)
 			if self.embedded_remeshing_flag:
 				self.problem_name=self.problem_name+"_REMESH_"+str(boundary_processes[0]["Parameters"]["metric_parameters"]["minimal_size"].GetDouble())
+			if parameters["solver_settings"]["formulation"].Has("penalty_coefficient") and not parameters["solver_settings"]["formulation"]["penalty_coefficient"].GetDouble() == 0.0:
+				self.problem_name=self.problem_name + '_PENALTY_' + str(parameters["solver_settings"]["formulation"]["penalty_coefficient"].GetDouble())
 		else:
 			self.embedded_remeshing_flag = False
 			self.is_embedded = False
 			self.problem_name=self.case+"_"+self.input_file
+			self.remeshing_flag = False
+			for process in other_processes:
+				if "remeshing" in process["python_module"].GetString():
+					self.remeshing_flag = True
 
 		self._CheckIfFileExists()
 
@@ -40,7 +47,6 @@ class PotentialAnalysisCustom(PotentialFlowAnalysis):
 		super(PotentialAnalysisCustom,self).__init__(model, parameters)
 
 		self.settings = parameters
-		self.remeshing_flag =  False #parameters["custom_settings"]["remeshing_flag"].GetBool()
 
 
 	def Finalize(self):
@@ -54,10 +60,12 @@ class PotentialAnalysisCustom(PotentialFlowAnalysis):
 		if "embedded" in self.case:
 			self._PostProcessEmbedded()
 		else:
-			pass
+			self._PostProcessBodyFitted()
 
 		if self.remeshing_flag:
-			self._RefineMesh()
+			self._CreateGidControlOutput("remeshed_hessian")
+			KratosMultiphysics.ModelPartIO('Meshes/'+self.input_file+'_HESSIANED', KratosMultiphysics.IO.WRITE | KratosMultiphysics.IO.MESH_ONLY).WriteModelPart(self._GetSolver().main_model_part)
+			print("Remeshed mesh saved as: ", self.input_file+'_HESSIANED')
 
 
 	def _CheckIfFileExists(self):
@@ -117,17 +125,17 @@ class PotentialAnalysisCustom(PotentialFlowAnalysis):
 		plt.close('all')
 
 
-		# with open('dats/cp_distribution_naca0012.dat') as file_cp_ref:
-		# 	lines=file_cp_ref.readlines()
-		# 	x_ref=[]
-		# 	cp_ref=[]
-		# 	for line in lines:
-		# 		x_ref.append(float(line.split(' ')[0]))
-		# 		cp_ref.append(float(line.split(' ')[1]))
-		# max_x=max(x_ref)
-		# min_x=min(x_ref)
-		# for i in range(0,len(x_ref)):
-		# 	x_ref[i]=(x_ref[i]-min_x)/abs(max_x-min_x)
+		with open('dats/cp_distribution_naca0012.dat') as file_cp_ref:
+			lines=file_cp_ref.readlines()
+			x_ref=[]
+			cp_ref=[]
+			for line in lines:
+				x_ref.append(float(line.split(' ')[0]))
+				cp_ref.append(float(line.split(' ')[1]))
+		max_x=max(x_ref)
+		min_x=min(x_ref)
+		for i in range(0,len(x_ref)):
+			x_ref[i]=(x_ref[i]-min_x)/abs(max_x-min_x)
 
 		with open('dats/'+self.problem_name+'_UpperCP.dat','w') as dat_file:
 			for i in range(len(x_upper)):
@@ -136,15 +144,15 @@ class PotentialAnalysisCustom(PotentialFlowAnalysis):
 			for i in range(len(x_lower)):
 				dat_file.write('%f %f \n' % (x_lower[i], cp_lower[i]))
 
-		# plt.plot(x_upper,cp_upper,'.',label='Upper surface')
-		# plt.plot(x_lower,cp_lower,'r.',label='Lower surface')
-		# plt.plot(x_ref, cp_ref ,'k.',label='Body fitted')
-		# title="Cl: %.5f, Cd: %.5f" % (Cl,Cd)
-		# plt.title(title)
-		# plt.legend()
-		# plt.gca().invert_yaxis()
-		# plt.savefig('Figures/'+self.problem_name+'_COMPARISON.png', bbox_inches='tight')
-		# plt.close('all')
+		plt.plot(x_upper,cp_upper,'.',label='Upper surface')
+		plt.plot(x_lower,cp_lower,'r.',label='Lower surface')
+		plt.plot(x_ref, cp_ref ,'k.',label='Body fitted')
+		title="Cl: %.5f, Cd: %.5f" % (Cl,Cd)
+		plt.title(title)
+		plt.legend()
+		plt.gca().invert_yaxis()
+		plt.savefig('Figures/'+self.problem_name+'_COMPARISON.png', bbox_inches='tight')
+		plt.close('all')
 
 		self._CreateGidControlOutput("embedded_all_active")
 
@@ -160,90 +168,40 @@ class PotentialAnalysisCustom(PotentialFlowAnalysis):
 			KratosMultiphysics.ModelPartIO('./Meshes/'+self.problem_name, KratosMultiphysics.IO.WRITE | KratosMultiphysics.IO.MESH_ONLY).WriteModelPart(self._GetSolver().main_model_part)
 			print("Remeshed mesh saved as: ", self.problem_name)
 
-	def _ComputeHessianMetric(self):
-		metric_parameters = KratosMultiphysics.Parameters("""
-			{
-				"minimal_size"                        : 0.00001,
-				"maximal_size"                        : 1000.0,
-				"enforce_current"                     : false,
-				"hessian_strategy_parameters":
-				{
-					"metric_variable"                  : ["VELOCITY_POTENTIAL"],
-					"estimate_interpolation_error"         : false,
-					"interpolation_error"                  : 1e-3
-				},
-				"anisotropy_remeshing"                : true
-			}    """)
+	def _PostProcessBodyFitted(self):
 
-		hessian_metric = KratosMeshing.ComputeHessianSolMetricProcess(self._GetSolver().main_model_part,KratosMultiphysics.CompressiblePotentialFlowApplication.VELOCITY_POTENTIAL, metric_parameters)
+		if not os.path.exists('./Figures/'):
+			os.makedirs('./Figures/')
 
-		hessian_metric.Execute()
-	def _ComputeCustomHessianMetric(self):
-		custom_gradient = KratosMultiphysics.CompressiblePotentialFlowApplication.ComputeCustomNodalGradientProcess(self._GetSolver().main_model_part,KratosMultiphysics.VELOCITY, KratosMultiphysics.NODAL_AREA)
-		custom_gradient.Execute()
-		metric_parameters = KratosMultiphysics.Parameters("""
-			{
-				"minimal_size"                        : 0.001,
-				"maximal_size"                        : 1000.0,
-				"enforce_current"                     : false,
-				"hessian_strategy_parameters":
-				{
-					"estimate_interpolation_error"         : false,
-					"interpolation_error"                  : 1e-2
-				},
-				"anisotropy_remeshing"                : true
-			}    """)
+		x_vector = []
+		cp_vector = []
 
-		# for node in self._GetSolver().main_model_part.Nodes:
-		# 	vector=node.GetValue(KratosMultiphysics.CompressiblePotentialFlowApplication.VELOCITY_LOWER)
-		# 	norm=np.linalg.norm(vector)
-		# 	node.SetSolutionStepValue(KratosMultiphysics.PRESSURE,norm)
-		print(self._GetSolver().main_model_part)
-		metric = KratosMultiphysics.MeshingApplication.ComputeHessianSolMetricProcess(self._GetSolver().main_model_part,KratosMultiphysics.VELOCITY_X, metric_parameters)
-		metric.Execute()
-		metric = KratosMultiphysics.MeshingApplication.ComputeHessianSolMetricProcess(self._GetSolver().main_model_part,KratosMultiphysics.VELOCITY_Y, metric_parameters)
-		metric.Execute()
-		if self.is_embedded:
-			find_nodal_h = KratosMultiphysics.FindNodalHNonHistoricalProcess(self._GetSolver().main_model_part)
-			find_nodal_h.Execute()
-			metric_tensor_2d = KratosMultiphysics.Vector(3)
-			for node in self._GetSolver().main_model_part.Nodes:
-				if node.GetSolutionStepValue(KratosMultiphysics.CompressiblePotentialFlowApplication.GEOMETRY_DISTANCE)<0.00:
-					nodal_h = node.GetValue(KratosMultiphysics.NODAL_H)
-					metric_tensor_2d[0] = 1.0/nodal_h/nodal_h
-					metric_tensor_2d[1] = 1.0/nodal_h/nodal_h
-					metric_tensor_2d[2] = 0.0
-					node.SetValue(KratosMultiphysics.MeshingApplication.METRIC_TENSOR_2D,metric_tensor_2d)
-	def _RefineMesh(self):
-		# Compute nodal_h
-		find_nodal_h = KratosMultiphysics.FindNodalHNonHistoricalProcess(self._GetSolver().main_model_part)
-		find_nodal_h.Execute()
-		self._ComputeCustomHessianMetric()
-		self._CreateGidControlOutput("hessian_metric")
-		# Execute remeshing process
+		for condition in self._GetSolver().main_model_part.GetSubModelPart("Body2D_Body").Conditions:
+			x_condition = condition.GetGeometry().Center().X
+			pressure = condition.GetValue(KratosMultiphysics.PRESSURE_COEFFICIENT)
+			x_vector.append(x_condition)
+			cp_vector.append(pressure)
 
-		mmg_parameters = KratosMultiphysics.Parameters("""
-        {
-            "discretization_type"                  : "STANDARD",
-            "save_external_files"              : false,
-            "initialize_entities"              : false,
-            "echo_level"                       : 0
-        }
-        """)
-		MmgProcess = KratosMeshing.MmgProcess2D(self._GetSolver().main_model_part,mmg_parameters)
-		MmgProcess.Execute()
-		if not self.embedded_remeshing_flag:
-			computational_name = self._GetSolver().GetComputingModelPart().Name
-			self._GetSolver().main_model_part.RemoveSubModelPart(computational_name)
+		max_x=max(x_vector)
+		min_x=min(x_vector)
+		for x in x_vector:
+			x=(x-min_x)/abs(max_x-min_x)
 
-		if self.is_embedded:
-			self._GetSolver().main_model_part.RemoveSubModelPart("trailing_edge_model_part")
-			self._GetSolver().main_model_part.RemoveSubModelPart("deactivated")
-			self._GetSolver().main_model_part.RemoveSubModelPart("boundary")
 
-		self._CreateGidControlOutput("remeshed_hessian")
-		KratosMultiphysics.ModelPartIO('Meshes/'+self.input_file+'_HESSIANED', KratosMultiphysics.IO.WRITE | KratosMultiphysics.IO.MESH_ONLY).WriteModelPart(self._GetSolver().main_model_part)
-		print("Remeshed mesh saved as: ", self.input_file+'_HESSIANED')
+		plt.plot(x_vector,cp_vector,'.')
+
+		Cl=self._GetSolver().main_model_part.ProcessInfo.GetValue(KratosMultiphysics.CompressiblePotentialFlowApplication.LIFT_COEFFICIENT)
+		Cd=self._GetSolver().main_model_part.ProcessInfo.GetValue(KratosMultiphysics.CompressiblePotentialFlowApplication.DRAG_COEFFICIENT)
+		title="Cl: %.5f, Cd: %.5f" % (Cl,Cd)
+
+		with open('dats/'+self.problem_name+'_Cp_distr.dat','w') as dat_file:
+			for i in range(len(x_vector)):
+				dat_file.write('%f %f \n' % (x_vector[i], cp_vector[i]))
+		plt.title(title)
+		# plt.legend()
+		plt.gca().invert_yaxis()
+		plt.savefig('Figures/'+self.problem_name+'.png', bbox_inches='tight')
+		plt.close('all')
 
 	def _CreateGidControlOutput(self, output_name):
 		for element in self._GetSolver().main_model_part.Elements:
@@ -262,7 +220,7 @@ class PotentialAnalysisCustom(PotentialFlowAnalysis):
 								"GiDPostMode": "GiD_PostBinary",
 								"MultiFileFlag": "SingleFile"
 							},
-							"nodal_results"       : ["VELOCITY_POTENTIAL","AUXILIARY_VELOCITY_POTENTIAL","GEOMETRY_DISTANCE"],
+							"nodal_results"       : ["VELOCITY_POTENTIAL","AUXILIARY_VELOCITY_POTENTIAL"],
 							"nodal_nonhistorical_results": ["METRIC_TENSOR_2D","TEMPERATURE","DISTANCE","TRAILING_EDGE"],
                         	"gauss_point_results" : ["PRESSURE_COEFFICIENT","VELOCITY","WAKE","KUTTA"],
 							"nodal_flags_results": [],

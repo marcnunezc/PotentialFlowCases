@@ -12,7 +12,7 @@
         "solver_type"            : "potential_flow",
         "model_import_settings"  : {
             "input_type"     : "mdpa",
-            "input_filename" :"naca0012Mesh0"
+            "input_filename" :"naca0012_5_inigo0"
         },
         "formulation"  : {
             "element_type": "incompressible"
